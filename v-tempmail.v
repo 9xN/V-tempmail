@@ -158,3 +158,59 @@ pub fn fetch_inbox(base_url string, emails []string, debug_mode bool) ?[]string 
 	}
 	return inbox
 }
+
+pub fn get_message(base_url string, emails []string, message_id string, debug_mode bool) ?[]string {
+	mut message := []string{}
+	token := json2.raw_decode(emails[0]) ?.as_map()['token']
+	header := http.new_header_from_map({
+		.authorization: 'Bearer $token',
+	})
+
+	response := http.fetch(header: header, url: base_url + '/messages' + message_id) ?
+	data := (json2.raw_decode(response.text) ?).as_map()
+	entries := data ?.arr()
+
+	for entry in entries {
+		println(entry)
+		message << entry.str()
+	}
+	return message
+}
+
+pub fn get_message_content(base_url string, emails []string, message_id string, debug_mode bool) ?[]string {
+	mut contents := []string{}
+	token := json2.raw_decode(emails[0]) ?.as_map()['token']
+	header := http.new_header_from_map({
+		.authorization: 'Bearer $token',
+	})
+
+	response := http.fetch(header: header, url: base_url + '/messages') ?
+	data := (json2.raw_decode(response.text) ?).as_map()
+	entries := data['text'] ?.arr()
+
+	for entry in entries {
+		println(entry)
+		contents << entry.str()
+	}
+	return contents
+}
+
+fn main() {
+	mut base_url := 'https://api.mail.gw'
+	mut debug_mode := false
+
+	debug(debug_mode) ?
+
+	// email := create_email(base_url, debug_mode) ?
+	// println(email)
+	// inbox := fetch_inbox(base_url, email, debug_mode) ?
+	// println(inbox)
+	// tokens := get_token(base_url, "vBMhgrey@bluebasketbooks.com.au", "ONIZLEVUIYQg", debug_mode) ?
+	// println(tokens)
+	// domains := get_domains(base_url, debug_mode) ?
+	// println(domains)
+	// message := get_message(base_url, email, message_id, debug_mode) ?
+	// println(message)
+	// message_content := get_message_content(base_url, email, message_id, debug_mode) ?
+	// println(message_content)
+}
