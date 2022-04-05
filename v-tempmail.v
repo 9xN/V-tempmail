@@ -168,7 +168,7 @@ pub fn get_message(base_url string, emails []string, message_id string, debug_mo
 
 	response := http.fetch(header: header, url: base_url + '/messages' + message_id) ?
 	data := (json2.raw_decode(response.text) ?).as_map()
-	entries := data ?.arr()
+	entries := data.arr()
 
 	for entry in entries {
 		println(entry)
