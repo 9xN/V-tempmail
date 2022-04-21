@@ -5,13 +5,14 @@ import x.json2
 import rand
 
 pub const (
-	reset   = '\x1b[39m'
-	blue    = '\x1b[34m'
-	cyan    = '\x1b[36m'
-	red     = '\x1b[31m'
-	magenta = '\x1b[35m'
-	green   = '\x1b[32m'
-	clear   = '\033[2J\033[1;1H'
+	base_url = 'https://api.mail.gw'
+	reset    = '\x1b[39m'
+	blue     = '\x1b[34m'
+	cyan     = '\x1b[36m'
+	red      = '\x1b[31m'
+	magenta  = '\x1b[35m'
+	green    = '\x1b[32m'
+	clear    = '\033[2J\033[1;1H'
 )
 
 [params]
@@ -32,11 +33,9 @@ pub fn debug(debug_mode bool) ?string {
 	return status
 }
 
-pub fn client()
-
-pub fn get_domains(base_url string, debug_mode bool) ?[]string {
+pub fn get_domains(debug_mode bool) ?[]string {
 	mut domains := []string{}
-	text := http.get_text(base_url + '/domains')
+	text := http.get_text('$base_url/domains')
 	data := (json2.raw_decode(text) ?).as_map()
 	entries := data['hydra:member'] ?.arr()
 
@@ -56,7 +55,7 @@ pub fn get_domains(base_url string, debug_mode bool) ?[]string {
 	return domains
 }
 
-pub fn create_email(base_url string, debug_mode bool, email_data Email_data) ?[]string {
+pub fn create_email(debug_mode bool, email_data Email_data) ?[]string {
 	mut emails := []string{}
 	mut email := ''
 	mut pass := ''
@@ -71,7 +70,7 @@ pub fn create_email(base_url string, debug_mode bool, email_data Email_data) ?[]
 		pass = email_data.email_pass
 	}
 
-	mail := email + '@' + get_domains(base_url, debug_mode) ?[0]
+	mail := email + '@' + get_domains(debug_mode) ?[0]
 
 	data := {
 		'address':  mail
@@ -80,8 +79,8 @@ pub fn create_email(base_url string, debug_mode bool, email_data Email_data) ?[]
 
 	cleaned_data := data.str().replace("'", '"')
 
-	response := http.post_json(base_url + '/accounts', cleaned_data) ?
-	token := get_token(base_url, mail, pass, debug_mode) ?
+	response := http.post_json('$base_url/accounts', cleaned_data) ?
+	token := get_token(mail, pass, debug_mode) ?
 
 	full_data := {
 		'address':  mail
@@ -116,7 +115,7 @@ pub fn create_email(base_url string, debug_mode bool, email_data Email_data) ?[]
 	return emails
 }
 
-pub fn get_token(base_url string, mail string, pass string, debug_mode bool) ?[]string {
+pub fn get_token(mail string, pass string, debug_mode bool) ?[]string {
 	mut tokens := []string{}
 	// mut mail := email
 	// mut pass := pass
@@ -126,7 +125,7 @@ pub fn get_token(base_url string, mail string, pass string, debug_mode bool) ?[]
 	}
 
 	cleaned_data := data.str().replace("'", '"')
-	response := http.post_json(base_url + '/token', cleaned_data) ?
+	response := http.post_json('$base_url/token', cleaned_data) ?
 
 	// token := (json2.raw_decode(response.text) ?).as_map()["token"]
 	token := json2.raw_decode(response.text) ?.as_map()['token'] ?
@@ -141,14 +140,14 @@ pub fn get_token(base_url string, mail string, pass string, debug_mode bool) ?[]
 	return tokens
 }
 
-pub fn fetch_inbox(base_url string, emails []string, debug_mode bool) ?[]string {
+pub fn fetch_inbox(emails []string, debug_mode bool) ?[]string {
 	mut inbox := []string{}
-	token := json2.raw_decode(emails[0]) ?.as_map()['token']
+	token := json2.raw_decode(emails[0]) ?.as_map()['token'] ?
 	header := http.new_header_from_map({
 		.authorization: 'Bearer $token',
 	})
 
-	response := http.fetch(header: header, url: base_url + '/messages') ?
+	response := http.fetch(header: header, url: '$base_url/messages') ?
 	data := (json2.raw_decode(response.text) ?).as_map()
 	entries := data['hydra:member'] ?.arr()
 
@@ -159,15 +158,15 @@ pub fn fetch_inbox(base_url string, emails []string, debug_mode bool) ?[]string 
 	return inbox
 }
 
-pub fn get_message(base_url string, emails []string, message_id string, debug_mode bool) ?[]string {
+pub fn get_message(emails []string, message_id string, debug_mode bool) ?[]string {
 	mut message := []string{}
 	token := json2.raw_decode(emails[0]) ?.as_map()['token']
 	header := http.new_header_from_map({
 		.authorization: 'Bearer $token',
 	})
 
-	response := http.fetch(header: header, url: base_url + '/messages' + message_id) ?
-	data := (json2.raw_decode(response.text) ?).as_map()
+	response := http.fetch(header: header, url: '$base_url/messages/$message_id') ?
+	data := (json2.raw_decode(response.text) ?).as_map()['msgid'] ?
 	entries := data.arr()
 
 	for entry in entries {
@@ -177,16 +176,16 @@ pub fn get_message(base_url string, emails []string, message_id string, debug_mo
 	return message
 }
 
-pub fn get_message_content(base_url string, emails []string, message_id string, debug_mode bool) ?[]string {
+pub fn get_message_content(emails []string, message_id string, debug_mode bool) ?[]string {
 	mut contents := []string{}
 	token := json2.raw_decode(emails[0]) ?.as_map()['token']
 	header := http.new_header_from_map({
 		.authorization: 'Bearer $token',
 	})
 
-	response := http.fetch(header: header, url: base_url + '/messages') ?
-	data := (json2.raw_decode(response.text) ?).as_map()
-	entries := data['text'] ?.arr()
+	response := http.fetch(header: header, url: '$base_url/messages') ?
+	data := (json2.raw_decode(response.text) ?)
+	entries := data.arr()
 
 	for entry in entries {
 		println(entry)
@@ -196,21 +195,20 @@ pub fn get_message_content(base_url string, emails []string, message_id string, 
 }
 
 fn main() {
-	mut base_url := 'https://api.mail.gw'
 	mut debug_mode := false
 
 	debug(debug_mode) ?
 
-	// email := create_email(base_url, debug_mode) ?
+	// email := create_email(debug_mode) ?
 	// println(email)
-	// inbox := fetch_inbox(base_url, email, debug_mode) ?
+	// inbox := fetch_inbox(email, debug_mode) ?
 	// println(inbox)
-	// tokens := get_token(base_url, "vBMhgrey@bluebasketbooks.com.au", "ONIZLEVUIYQg", debug_mode) ?
+	// tokens := get_token("vBMhgrey@bluebasketbooks.com.au", "ONIZLEVUIYQg", debug_mode) ?
 	// println(tokens)
-	// domains := get_domains(base_url, debug_mode) ?
+	// domains := get_domains(debug_mode) ?
 	// println(domains)
-	// message := get_message(base_url, email, message_id, debug_mode) ?
+	// message := get_message(email, message_id, debug_mode) ?
 	// println(message)
-	// message_content := get_message_content(base_url, email, message_id, debug_mode) ?
+	// message_content := get_message_content(email, message_id, debug_mode) ?
 	// println(message_content)
 }
